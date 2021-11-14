@@ -1,7 +1,6 @@
 package api;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Random;
 
 import org.sat4j.core.VecInt;
@@ -37,7 +36,6 @@ public class SatMSAgent extends MSAgent {
 
     do {
       // START OF STEP
-      long start = System.currentTimeMillis();
       if (displayActivated) {
         System.out.println(field);
       }
@@ -58,6 +56,7 @@ public class SatMSAgent extends MSAgent {
           final int NBCLAUSES = clauses.length; // (max) number of clauses
           solver.newVar(MAXVAR);
           solver.setExpectedNumberOfClauses(NBCLAUSES);
+          
 
           for (int i = 0; i < NBCLAUSES; i++) {
             int[] clause = clauses[i];
@@ -74,14 +73,15 @@ public class SatMSAgent extends MSAgent {
 
           try {
             ArrayList<int[]> models = new ArrayList<int[]>();
-            while (solver.isSatisfiable()) {
+            long startLoop = System.currentTimeMillis();
+            while (solver.isSatisfiable() && (System.currentTimeMillis() - startLoop) < 400) {
               models.add(solver.model());
             }
             // If a model could be found
             if (!models.isEmpty()) {
               boolean notPerfect = true;
               // Iterate through all models and sum up how many times a cell isn't assigned a mine
-              int[] timesFalse = new int[models.get(0).length];
+              int[] timesFalse = new int[models.get(0).length]; 
               for (int[] model : models) {
                 for (int i = 0; i < timesFalse.length; i++) {
                   if (model[i] < 0) {
@@ -100,32 +100,32 @@ public class SatMSAgent extends MSAgent {
                 if (falseRate[i] == bestRate) {
                   bestCells.add(cells.getCell(Math.abs(models.get(0)[i])));
                   if (displayActivated) {
-                  System.out.println(
-                      "Equal best cell found: "
-                          + Math.abs(models.get(0)[i])
-                          + (" (")
-                          + cells.getCell(Math.abs(models.get(0)[i])).getX()
-                          + ", "
-                          + cells.getCell(Math.abs(models.get(0)[i])).getY()
-                          + (") ")
-                          + " with a falseRate of "
-                          + falseRate[i]);
+                    System.out.println(
+                        "Equal best cell found: "
+                            + Math.abs(models.get(0)[i])
+                            + (" (")
+                            + cells.getCell(Math.abs(models.get(0)[i])).getX()
+                            + ", "
+                            + cells.getCell(Math.abs(models.get(0)[i])).getY()
+                            + (") ")
+                            + " with a falseRate of "
+                            + falseRate[i]);
                   }
                 } else if (falseRate[i] > bestRate) {
                   bestRate = falseRate[i];
                   bestCells.clear();
                   bestCells.add(cells.getCell(Math.abs(models.get(0)[i])));
                   if (displayActivated) {
-                  System.out.println(
-                      "New best cell found: "
-                          + Math.abs(models.get(0)[i])
-                          + (" (")
-                          + cells.getCell(Math.abs(models.get(0)[i])).getX()
-                          + ", "
-                          + cells.getCell(Math.abs(models.get(0)[i])).getY()
-                          + (") ")
-                          + " with a falseRate of "
-                          + falseRate[i]);
+                    System.out.println(
+                        "New best cell found: "
+                            + Math.abs(models.get(0)[i])
+                            + (" (")
+                            + cells.getCell(Math.abs(models.get(0)[i])).getX()
+                            + ", "
+                            + cells.getCell(Math.abs(models.get(0)[i])).getY()
+                            + (") ")
+                            + " with a falseRate of "
+                            + falseRate[i]);
                   }
                   notPerfect = falseRate[i] != 1.0;
                 }
@@ -138,14 +138,15 @@ public class SatMSAgent extends MSAgent {
                 bestCell = bestCells.get(0);
                 bestCells.clear();
               }
-              
+
               if (notPerfect) {
                 bestCells.clear();
                 // TODO: Test for random selection here
-//                ArrayList<Cell> randomCells = cells.getAllCellsWithoutUncoveredNeighbour();
-//                Random ran = new Random();
-//                int randIndex = ran.nextInt(randomCells.size());
-//                bestCell = randomCells.get(randIndex);
+                //                ArrayList<Cell> randomCells =
+                // cells.getAllCellsWithoutUncoveredNeighbour();
+                //                Random ran = new Random();
+                //                int randIndex = ran.nextInt(randomCells.size());
+                //                bestCell = randomCells.get(randIndex);
               }
 
               // System.out.println("Model count = "  + models.size());
@@ -168,11 +169,10 @@ public class SatMSAgent extends MSAgent {
           // in here
         } else {
           if (displayActivated) {
-          System.out.println(
-              "Selection process skipped, as there are still bestCells with falseRate = 1.0 remaining");
-          System.out.println("bestCells.size() before: " + bestCells.size() ); 
+            System.out.println(
+                "Selection process skipped, as there are still bestCells with falseRate = 1.0 remaining");
+            System.out.println("bestCells.size() before: " + bestCells.size());
           }
-          //int randIndex = (int) (Math.random() * bestCells.size());
           Random ran = new Random();
           int randIndex = ran.nextInt(bestCells.size());
           bestCell = bestCells.get(randIndex);
@@ -192,7 +192,6 @@ public class SatMSAgent extends MSAgent {
       feedback = field.uncover(x, y);
       cells.uncoverCell(x, y, feedback);
       // END OF STEP
-      //      System.out.println("Step: " + (System.currentTimeMillis() - start) + "ms" );
     } while (feedback >= 0 && !field.solved());
 
     if (field.solved()) {
@@ -204,7 +203,7 @@ public class SatMSAgent extends MSAgent {
       if (displayActivated) {
         System.out.println("BOOM!");
       }
-      System.out.println("BOOM! because of (" + x + "," + y + ")"); 
+      System.out.println("BOOM! because of (" + x + "," + y + ")");
       return false;
     }
   }
