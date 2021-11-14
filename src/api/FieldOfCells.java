@@ -80,6 +80,15 @@ public class FieldOfCells {
     }
     return false;
   }
+  
+  public boolean hasUncoveredNeighbour(int x, int y) {
+    for (Cell c : getNeighbourCells(x, y)) {
+      if (c.isUncovered()) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   public ArrayList<Cell> getCoveredNeighbourCells(int x, int y) {
     ArrayList<Cell> neighbourCells = getNeighbourCells(x, y);
@@ -90,6 +99,16 @@ public class FieldOfCells {
       }
     }
     return coveredNeighbourCells;
+  }
+  
+  public ArrayList<Cell> getAllCellsWithoutUncoveredNeighbour(){
+    ArrayList<Cell> cellsWithoutUncoveredNeighbours = new ArrayList<Cell>();
+    for (Cell c : cells) {
+      if (hasCoveredNeighbour(c.getX(), c.getY())){
+        cellsWithoutUncoveredNeighbours.add(c);
+      }
+    }
+    return cellsWithoutUncoveredNeighbours;
   }
 
   public ArrayList<Cell> getNeighbourCells(int x, int y) {

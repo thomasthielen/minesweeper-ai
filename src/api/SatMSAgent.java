@@ -1,6 +1,7 @@
 package api;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 
 import org.sat4j.core.VecInt;
@@ -17,8 +18,6 @@ public class SatMSAgent extends MSAgent {
   private boolean displayActivated = false;
   private boolean firstDecision = true;
 
-  private boolean secondDecision = false;
-
   private FieldOfCells cells;
 
   public SatMSAgent(MSField field) {
@@ -30,11 +29,15 @@ public class SatMSAgent extends MSAgent {
   @Override
   public boolean solve() {
 
+    ArrayList<Cell> bestCells = new ArrayList<Cell>();
+
     int numOfRows = this.field.getNumOfRows();
     int numOfCols = this.field.getNumOfCols();
     int x, y, feedback;
 
     do {
+      // START OF STEP
+      long start = System.currentTimeMillis();
       if (displayActivated) {
         System.out.println(field);
       }
@@ -42,7 +45,6 @@ public class SatMSAgent extends MSAgent {
         x = 0;
         y = 0;
         firstDecision = false;
-        secondDecision = true;
       } else {
         Cell bestCell = null;
 
@@ -50,91 +52,147 @@ public class SatMSAgent extends MSAgent {
 
         ISolver solver = new ModelIterator(SolverFactory.newDefault());
 
-        final int MAXVAR = cells.size(); // (max) number of variables
-        final int NBCLAUSES = clauses.length; // (max) number of clauses
-        solver.newVar(MAXVAR);
-        solver.setExpectedNumberOfClauses(NBCLAUSES);
+        if (bestCells.isEmpty()) {
 
-        for (int i = 0; i < NBCLAUSES; i++) {
-          int[] clause = clauses[i];
-//          if (secondDecision) {
-//            System.out.println("Clause:");
-//            for (int j : clause) {
-//              System.out.print(j + " ");
-//            }
-//            System.out.println();
-//          }
+          final int MAXVAR = cells.size(); // (max) number of variables
+          final int NBCLAUSES = clauses.length; // (max) number of clauses
+          solver.newVar(MAXVAR);
+          solver.setExpectedNumberOfClauses(NBCLAUSES);
+
+          for (int i = 0; i < NBCLAUSES; i++) {
+            int[] clause = clauses[i];
+            //          System.out.println("Clause " + i + ": " );
+            //          System.out.println(Arrays.toString(clause) );
+            //          System.out.println( );
+            try {
+              solver.addClause(new VecInt(clause));
+            } catch (ContradictionException e) {
+              System.out.println("Contradiction occured!");
+              e.printStackTrace();
+            }
+          }
+
           try {
-            solver.addClause(new VecInt(clause));
-          } catch (ContradictionException e) {
-            System.out.println("Contradiction occured!");
-            e.printStackTrace();
-          }
-        }
-
-        try {
-          ArrayList<int[]> models = new ArrayList<int[]>();
-          while (solver.isSatisfiable()) {
-            models.add(solver.model());
-          }
-          // If a model could be found
-          if (!models.isEmpty()) {
-            // Iterate through all models and sum up how many times a cell isn't assigned a mine
-            int[] timesFalse = new int[models.get(0).length];
-            for (int[] model : models) {
-//              if (secondDecision) {
-//                System.out.println("Model: ");
-//                for (int m : model) {
-//                  System.out.print(m + " ");
-//                }
-//                System.out.println();
-//              }
-              for (int i = 0; i < timesFalse.length; i++) {
-                if (model[i] < 0) {
-                  timesFalse[i]++;
+            ArrayList<int[]> models = new ArrayList<int[]>();
+            while (solver.isSatisfiable()) {
+              models.add(solver.model());
+            }
+            // If a model could be found
+            if (!models.isEmpty()) {
+              boolean notPerfect = true;
+              // Iterate through all models and sum up how many times a cell isn't assigned a mine
+              int[] timesFalse = new int[models.get(0).length];
+              for (int[] model : models) {
+                for (int i = 0; i < timesFalse.length; i++) {
+                  if (model[i] < 0) {
+                    timesFalse[i]++;
+                  }
                 }
               }
-            }
-            // Calculate the rate of a cell being false using these values
-            double[] falseRate = new double[timesFalse.length];
-//            System.out.println("falseRates:");
-            for (int i = 0; i < falseRate.length; i++) {
-              falseRate[i] = timesFalse[i] / (double) models.size();
-//              System.out.print(falseRate[i] + " ");
-            }
-//            System.out.println();
-            // And use the cell with the best rate
-            double bestRate = -1.0;
-            for (int i = 0; i < falseRate.length; i++) {
-              if (falseRate[i] > bestRate) {
-                bestRate = falseRate[i];
-                bestCell = cells.getCell(Math.abs(models.get(0)[i]));
+              // Calculate the rate of a cell being false using these values
+              double[] falseRate = new double[timesFalse.length];
+              for (int i = 0; i < falseRate.length; i++) {
+                falseRate[i] = timesFalse[i] / (double) models.size();
               }
+              // And use the cell with the best rate
+              double bestRate = 0.01;
+              for (int i = 0; i < falseRate.length; i++) {
+                if (falseRate[i] == bestRate) {
+                  bestCells.add(cells.getCell(Math.abs(models.get(0)[i])));
+                  if (displayActivated) {
+                  System.out.println(
+                      "Equal best cell found: "
+                          + Math.abs(models.get(0)[i])
+                          + (" (")
+                          + cells.getCell(Math.abs(models.get(0)[i])).getX()
+                          + ", "
+                          + cells.getCell(Math.abs(models.get(0)[i])).getY()
+                          + (") ")
+                          + " with a falseRate of "
+                          + falseRate[i]);
+                  }
+                } else if (falseRate[i] > bestRate) {
+                  bestRate = falseRate[i];
+                  bestCells.clear();
+                  bestCells.add(cells.getCell(Math.abs(models.get(0)[i])));
+                  if (displayActivated) {
+                  System.out.println(
+                      "New best cell found: "
+                          + Math.abs(models.get(0)[i])
+                          + (" (")
+                          + cells.getCell(Math.abs(models.get(0)[i])).getX()
+                          + ", "
+                          + cells.getCell(Math.abs(models.get(0)[i])).getY()
+                          + (") ")
+                          + " with a falseRate of "
+                          + falseRate[i]);
+                  }
+                  notPerfect = falseRate[i] != 1.0;
+                }
+              }
+              if (bestCells.size() > 1) {
+                int randIndex = (int) (Math.random() * bestCells.size());
+                bestCell = bestCells.get(randIndex);
+                bestCells.remove(randIndex);
+              } else {
+                bestCell = bestCells.get(0);
+                bestCells.clear();
+              }
+              
+              if (notPerfect) {
+                bestCells.clear();
+                // TODO: Test for random selection here
+//                ArrayList<Cell> randomCells = cells.getAllCellsWithoutUncoveredNeighbour();
+//                Random ran = new Random();
+//                int randIndex = ran.nextInt(randomCells.size());
+//                bestCell = randomCells.get(randIndex);
+              }
+
+              // System.out.println("Model count = "  + models.size());
+            } else {
+              System.out.println("Problem is not satisfiable.");
             }
-//            System.out.println("bestCell: " + bestCell.getX() + ", " + bestCell.getY());
-          } else {
-            System.out.println("Problem is not satisfiable.");
+          } catch (TimeoutException e) {
+            System.out.println("Timeout occured!");
+            e.printStackTrace();
           }
-        } catch (TimeoutException e) {
-          System.out.println("Timeout occured!");
-          e.printStackTrace();
-        }
 
-        if (bestCell != null) {
-          x = bestCell.getX();
-          y = bestCell.getY();
+          if (bestCell != null) {
+            x = bestCell.getX();
+            y = bestCell.getY();
+          } else {
+            System.out.println("Error: No suitable best cell found!");
+            x = rand.nextInt(numOfCols);
+            y = rand.nextInt(numOfRows);
+          }
+          // in here
         } else {
-          System.out.println("Error: No suitable best cell found!");
-          x = rand.nextInt(numOfCols);
-          y = rand.nextInt(numOfRows);
+          if (displayActivated) {
+          System.out.println(
+              "Selection process skipped, as there are still bestCells with falseRate = 1.0 remaining");
+          System.out.println("bestCells.size() before: " + bestCells.size() ); 
+          }
+          //int randIndex = (int) (Math.random() * bestCells.size());
+          Random ran = new Random();
+          int randIndex = ran.nextInt(bestCells.size());
+          bestCell = bestCells.get(randIndex);
+          bestCells.remove(randIndex);
+          if (bestCell != null) {
+            x = bestCell.getX();
+            y = bestCell.getY();
+          } else {
+            System.out.println("Error: No suitable best cell found!");
+            x = rand.nextInt(numOfCols);
+            y = rand.nextInt(numOfRows);
+          }
         }
-
-        // secondDecision = false;
       }
 
       if (displayActivated) System.out.println("Uncovering (" + x + "," + y + ")");
       feedback = field.uncover(x, y);
       cells.uncoverCell(x, y, feedback);
+      // END OF STEP
+      //      System.out.println("Step: " + (System.currentTimeMillis() - start) + "ms" );
     } while (feedback >= 0 && !field.solved());
 
     if (field.solved()) {
@@ -146,6 +204,7 @@ public class SatMSAgent extends MSAgent {
       if (displayActivated) {
         System.out.println("BOOM!");
       }
+      System.out.println("BOOM! because of (" + x + "," + y + ")"); 
       return false;
     }
   }
@@ -154,13 +213,7 @@ public class SatMSAgent extends MSAgent {
     ArrayList<int[]> clausesList = new ArrayList<int[]>();
 
     for (Cell c : cells.getClueCells()) {
-      //            System.out.println("ClueCell: " + c.getIndex() + " with clue = " + c.getClue());
       ArrayList<Cell> coveredNeighbourCells = cells.getCoveredNeighbourCells(c.getX(), c.getY());
-      //            System.out.println("Its neighbours:" );
-      //            for (Cell cn : coveredNeighbourCells) {
-      //              System.out.print(cn.getIndex() + " " );
-      //            }
-      //            System.out.println( );
       int n = coveredNeighbourCells.size();
 
       boolean[][] truthTable = generateTruthTable(n); // Generate a table with number of rows = 2^n
