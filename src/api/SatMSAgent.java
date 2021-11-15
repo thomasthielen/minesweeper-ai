@@ -56,7 +56,6 @@ public class SatMSAgent extends MSAgent {
           final int NBCLAUSES = clauses.length; // (max) number of clauses
           solver.newVar(MAXVAR);
           solver.setExpectedNumberOfClauses(NBCLAUSES);
-          
 
           for (int i = 0; i < NBCLAUSES; i++) {
             int[] clause = clauses[i];
@@ -77,11 +76,14 @@ public class SatMSAgent extends MSAgent {
             while (solver.isSatisfiable() && (System.currentTimeMillis() - startLoop) < 400) {
               models.add(solver.model());
             }
+            if ((System.currentTimeMillis() - startLoop) >= 400 && displayActivated) {
+              System.out.println("Model calculation stopped due to timeout." ); 
+            }
             // If a model could be found
             if (!models.isEmpty()) {
               boolean notPerfect = true;
               // Iterate through all models and sum up how many times a cell isn't assigned a mine
-              int[] timesFalse = new int[models.get(0).length]; 
+              int[] timesFalse = new int[models.get(0).length];
               for (int[] model : models) {
                 for (int i = 0; i < timesFalse.length; i++) {
                   if (model[i] < 0) {
@@ -110,6 +112,8 @@ public class SatMSAgent extends MSAgent {
                             + (") ")
                             + " with a falseRate of "
                             + falseRate[i]);
+                    System.out.println(
+                        "The falseRate was calculated by " + timesFalse[i] + "/" + models.size());
                   }
                 } else if (falseRate[i] > bestRate) {
                   bestRate = falseRate[i];
@@ -126,8 +130,12 @@ public class SatMSAgent extends MSAgent {
                             + (") ")
                             + " with a falseRate of "
                             + falseRate[i]);
+                    System.out.println(
+                        "The falseRate was calculated by " + timesFalse[i] + "/" + models.size());
                   }
                   notPerfect = falseRate[i] != 1.0;
+                } else {
+                  cells.getCell(Math.abs(models.get(0)[i])).markMine();
                 }
               }
               if (bestCells.size() > 1) {
@@ -142,11 +150,18 @@ public class SatMSAgent extends MSAgent {
               if (notPerfect) {
                 bestCells.clear();
                 // TODO: Test for random selection here
-                //                ArrayList<Cell> randomCells =
-                // cells.getAllCellsWithoutUncoveredNeighbour();
-                //                Random ran = new Random();
-                //                int randIndex = ran.nextInt(randomCells.size());
-                //                bestCell = randomCells.get(randIndex);
+//                ArrayList<Cell> candidates = cells.getAllCoveredNotDefinitelyMines();
+//                if (displayActivated) {
+//                  System.out.println("Random selection due to notPerfect = true:");
+//                  System.out.println("candidates:");
+//                  for (Cell c : candidates) {
+//                    System.out.print("(" + c.getX() + "," + c.getY() + ") ");
+//                  }
+//                  System.out.println();
+//                }
+//                Random ran = new Random();
+//                int randIndex = ran.nextInt(candidates.size());
+//                bestCell = candidates.get(randIndex);
               }
 
               // System.out.println("Model count = "  + models.size());

@@ -8,6 +8,12 @@ public class FieldOfCells {
   private int numOfCols;
   private int numOfRows;
 
+  /**
+   * Constructor which builds the cells array.
+   * 
+   * @param numOfCols
+   * @param numOfRows
+   */
   public FieldOfCells(int numOfCols, int numOfRows) {
     cells = new ArrayList<Cell>();
     int i = 0;
@@ -21,34 +27,11 @@ public class FieldOfCells {
     this.numOfRows = numOfRows;
   }
 
-  public ArrayList<Cell> getUncoveredCells() {
-    ArrayList<Cell> uncoveredCells = new ArrayList<Cell>();
-    for (Cell c : cells) {
-      if (c.isUncovered()) {
-        uncoveredCells.add(c);
-      }
-    }
-    return uncoveredCells;
-  }
-
-  public ArrayList<Cell> getAllRelevantCells() {
-    HashSet<Cell> allRelevantCellsSet = new HashSet<Cell>();
-    for (Cell c : getClueCells()) {
-      allRelevantCellsSet.addAll(getCoveredNeighbourCells(c.getX(), c.getY()));
-    }
-    ArrayList<Cell> allRelevantCells = new ArrayList<Cell>();
-    allRelevantCells.addAll(allRelevantCellsSet);
-    return allRelevantCells;
-  }
-
-  //  public ArrayList<Integer> getAllRelevantIndeces() {
-  //    ArrayList<Integer> allRelevantIndices = new ArrayList<Integer>();
-  //    for (Cell c : getAllRelevantCells()) {
-  //      allRelevantIndices.add(Integer.valueOf(c.getIndex()));
-  //    }
-  //    return allRelevantIndices;
-  //  }
-
+  /**
+   * Returns all uncovered cells which still have covered neighbours.
+   * 
+   * @return clue cells
+   */
   public ArrayList<Cell> getClueCells() {
     ArrayList<Cell> clueCells = new ArrayList<Cell>();
     for (Cell c : cells) {
@@ -59,19 +42,50 @@ public class FieldOfCells {
     }
     return clueCells;
   }
+  
+  /**
+   * Returns all covered neighbours of all clue cells.
+   * 
+   * @return relevant cells
+   */
+  public ArrayList<Cell> getAllRelevantCells() {
+    HashSet<Cell> allRelevantCellsSet = new HashSet<Cell>();
+    for (Cell c : getClueCells()) {
+      allRelevantCellsSet.addAll(getCoveredNeighbourCells(c.getX(), c.getY()));
+    }
+    ArrayList<Cell> allRelevantCells = new ArrayList<Cell>();
+    allRelevantCells.addAll(allRelevantCellsSet);
+    return allRelevantCells;
+  }
 
+  /**
+   * Uncovers the cell at the given coordinates and saves its clue.
+   * 
+   * @param x
+   * @param y
+   * @param clue
+   */
   public void uncoverCell(int x, int y, int clue) {
     getCell(x, y).uncover(clue);
   }
-
-  public Cell getCell(int x, int y) {
-    return cells.get(x + y * numOfCols);
+  
+  /**
+   * Marks a mine at the given coordinates.
+   * 
+   * @param x
+   * @param y
+   */
+  public void markMine(int x, int y) {
+    getCell(x, y).markMine();
   }
 
-  public Cell getCell(int index) {
-    return cells.get(index);
-  }
-
+  /**
+   * Returns whether the given cell has a covered neighbour.
+   * 
+   * @param x
+   * @param y
+   * @return
+   */
   public boolean hasCoveredNeighbour(int x, int y) {
     for (Cell c : getNeighbourCells(x, y)) {
       if (!c.isUncovered()) {
@@ -81,6 +95,13 @@ public class FieldOfCells {
     return false;
   }
   
+  /**
+   * Returns whether the given cell has an uncovered neighbour.
+   * 
+   * @param x
+   * @param y
+   * @return
+   */
   public boolean hasUncoveredNeighbour(int x, int y) {
     for (Cell c : getNeighbourCells(x, y)) {
       if (c.isUncovered()) {
@@ -90,6 +111,13 @@ public class FieldOfCells {
     return false;
   }
 
+  /**
+   * Returns all covered neighbours of the given cell.
+   * 
+   * @param x
+   * @param y
+   * @return
+   */
   public ArrayList<Cell> getCoveredNeighbourCells(int x, int y) {
     ArrayList<Cell> neighbourCells = getNeighbourCells(x, y);
     ArrayList<Cell> coveredNeighbourCells = new ArrayList<Cell>();
@@ -101,6 +129,16 @@ public class FieldOfCells {
     return coveredNeighbourCells;
   }
   
+  public ArrayList<Cell> getAllCoveredNotDefinitelyMines(){
+    ArrayList<Cell> coveredNotDefinitelyMines = new ArrayList<Cell>();
+    for (Cell c : cells) {
+      if (!c.isUncovered() && !c.isMine()){
+        coveredNotDefinitelyMines.add(c);
+      }
+    }
+    return coveredNotDefinitelyMines;
+  }
+
   public ArrayList<Cell> getAllCellsWithoutUncoveredNeighbour(){
     ArrayList<Cell> cellsWithoutUncoveredNeighbours = new ArrayList<Cell>();
     for (Cell c : cells) {
@@ -111,6 +149,13 @@ public class FieldOfCells {
     return cellsWithoutUncoveredNeighbours;
   }
 
+  /**
+   * Returns all neighbours of the given cell.
+   * 
+   * @param x
+   * @param y
+   * @return
+   */
   public ArrayList<Cell> getNeighbourCells(int x, int y) {
     ArrayList<Cell> neighbourCells = new ArrayList<Cell>();
     // Upper Neighbour
@@ -150,5 +195,13 @@ public class FieldOfCells {
 
   public int size() {
     return this.cells.size();
+  }
+  
+  public Cell getCell(int x, int y) {
+    return cells.get(x + y * numOfCols);
+  }
+
+  public Cell getCell(int index) {
+    return cells.get(index);
   }
 }
