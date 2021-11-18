@@ -6,13 +6,12 @@ import java.text.DecimalFormat;
  * An example of how to use a MSAgent to solve the game. You can do whatever you
  * want with this class.
  */
-public class UsageExample {
-
+public class Main {
+  
   /**
    * Array containing the names of all fields. If you want to iterate over all of
    * them, this might help
    */
-
   private static final double[] expectedRate = { 100, 83.7, 100, 100, 100, 100, 100, 100, 50.6, 75.3, 69, 100, 100, 100,
       100, 51.2, 67.8, 61.7, 16.3, 6, 74, 66, 14, 100 };
 
@@ -50,7 +49,7 @@ public class UsageExample {
 
     // Test a specific field (CHANGE VALUES)
     int iterations = 1;
-    int field = 1;
+    int field = 21;
     // Test all fields (starting with field[startAt]) (CHANGE VALUES)
     boolean checkAllFields = false;
     int startAt = 0;
@@ -70,8 +69,12 @@ public class UsageExample {
     int success = 0;
     long duration = 0;
     for (int i = 0; i < iterations; i++) {
-      if (i % 10 == 0 && !displayIterations) {
-        System.out.print(".");
+      if (!displayIterations) {
+        if (i < iterations - 1) {
+        System.out.print("\rIteration " + i);
+        } else {
+          System.out.print("\rAll iterations calculated.");
+        }
       }
       long start = System.currentTimeMillis();
 
@@ -107,7 +110,7 @@ public class UsageExample {
       }
     }
 
-    System.out.println("\nStatistics for " + iterations + " iterations of field " + fields[field] + ":");
+    System.out.println("\n\nStatistics for " + iterations + " iterations of field " + fields[field] + ":");
 
     double rate = 100 * (double) success / (double) iterations;
     double avgDuration = ((double) duration / (double) success) / 1000;

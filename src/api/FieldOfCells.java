@@ -53,28 +53,7 @@ public class FieldOfCells {
     return clueCells;
   }
 
-  //  public ArrayList<Cell> getClueCells() {
-  //    ArrayList<Cell> clueCells = new ArrayList<Cell>();
-  //    //System.out.println("Mines at:" );
-  //    for (Cell c : cells) {
-  //      ArrayList<Cell> coveredNeighbours = getCoveredNeighbourCells(c.getX(), c.getY());
-  //      ArrayList<Cell> coveredNeighboursNotMine = new ArrayList<Cell>();
-  //      for (Cell cn : coveredNeighbours) {
-  //        if (!cn.isMine()) {
-  //          coveredNeighboursNotMine.add(cn);
-  //        }
-  //      }
-  //      if (coveredNeighboursNotMine.size() > 0 && c.isUncovered()) {
-  //        clueCells.add(c);
-  //      }
-  ////      if (c.isMine()) {
-  ////        System.out.print("(" + c.getX() + "," + c.getY() + ") ");
-  ////      }
-  //    }
-  ////    System.out.println( );
-  //    return clueCells;
-  //  }
-
+ 
   /**
    * Returns all covered neighbours of all clue cells.
    *
@@ -187,16 +166,6 @@ public class FieldOfCells {
       }
     }
     return coveredNotDefinitelyMines;
-  }
-
-  public ArrayList<Cell> getAllCellsWithoutUncoveredNeighbour() {
-    ArrayList<Cell> cellsWithoutUncoveredNeighbours = new ArrayList<Cell>();
-    for (Cell c : cells) {
-      if (hasCoveredNeighbour(c.getX(), c.getY())) {
-        cellsWithoutUncoveredNeighbours.add(c);
-      }
-    }
-    return cellsWithoutUncoveredNeighbours;
   }
 
   /**

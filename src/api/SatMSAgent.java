@@ -1,9 +1,6 @@
 package api;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Random;
 
 import org.sat4j.core.VecInt;
@@ -43,227 +40,83 @@ public class SatMSAgent extends MSAgent {
     int numOfCols = this.field.getNumOfCols();
     int x, y, feedback;
 
-    boolean modelInterrupt = false;
-
     do {
-      // START OF STEP
+      // start of a step
       long start = System.currentTimeMillis(); // time at the beginning of step
       if (displayActivated) {
         System.out.println(field);
-      }
+      } 
+      // uncover cell (0,0) on the first step
       if (firstDecision) {
         x = 0;
         y = 0;
         firstDecision = false;
       } else {
         Cell bestCell = null;
+
         // in case no safe cells are remaining in bestCells:
         if (bestCells.isEmpty()) {
+
           int[][] clauses = cnfGenerator(); // generate the clauses array
 
-          // TEST 1
+          // general idea:
+          // For every cell which neighbours an uncovered cell, add a clause to the
+          // generated clauses which is used to proof whether the cell is either
+          // definitely a mine or definitely not. Use the gathered information to mark or
+          // uncover the respective cells.
+          // Cells for which neither can be proven are not modified.
+          // In case no safe decision can be made, a random cell (which isn't marked as a
+          // mine) is chosen an uncovered.
 
-//          if (displayActivated) {
-//            System.out.println("CLAUSES SEPARATION TEST");
-//            System.out.println("clauses.length = " + clauses.length);
-//          }
-//          ArrayList<int[][]> separateClauses = cnfSeparator(clauses);
-//          if (displayActivated) {
-//            System.out.println("separateClauses.size() = " + separateClauses.size());
-//          }
-
-          // TEST 2: Try adding a clause to the clauseList which requires that
-          // the neighbourCell must be true (holds a mine).
-          // If not a single model can be found for the resulting formula, the
-          // neighbourCell must be false => safe bet
-
-          ArrayList<Cell> testBestCells = calculateBestCells(clauses);
-
-          System.out.println("testBestCells:");
-          for (Cell c : testBestCells) {
-            System.out.print("(" + c.getX() + "," + c.getY() + ") ");
-          }
-          System.out.println();
-          // END TEST
-
-          // Set up the SATsolver
-          ISolver solver = new ModelIterator(SolverFactory.newDefault());
-          final int MAXVAR = cells.size(); // (max) number of variables
-          final int NBCLAUSES = clauses.length; // (max) number of clauses
-          solver.newVar(MAXVAR);
-          solver.setExpectedNumberOfClauses(NBCLAUSES);
-
-          // iterate through the clauses and add them to the solver
-          for (int i = 0; i < NBCLAUSES; i++) {
-            int[] clause = clauses[i];
-//            if (displayActivated) {
-//               System.out.println("Clause " + i + ": " );
-//               System.out.println(Arrays.toString(clause) );
-//               System.out.println( );
-//            }
-            try {
-              solver.addClause(new VecInt(clause));
-            } catch (ContradictionException e) {
-              System.out.println("Contradiction occured!");
-              e.printStackTrace();
-            }
+          long startCalculation = System.currentTimeMillis();
+          bestCells = calculateBestCells(clauses);
+          if (displayActivated) {
+            System.out.println("The calculation of safe cells and mines took: "
+                + (System.currentTimeMillis() - startCalculation) + "ms");
           }
 
           if (displayActivated) {
-            System.out.println("It took " + (System.currentTimeMillis() - start) + "ms to calculate the clauses");
-          }
-
-          try {
-            ArrayList<int[]> models = new ArrayList<int[]>();
-            long startLoop = System.currentTimeMillis();
-            // Calculate all models via the solver and add them to the arraylist models
-            while (solver.isSatisfiable() && (System.currentTimeMillis() - startLoop) < 50) {
-              models.add(solver.model());
-
-              // TODO: TEST
-//              long startTest = System.currentTimeMillis();
-//              int[] timesFalse = new int[models.get(0).length];
-//              for (int[] model : models) {
-//                for (int i = 0; i < timesFalse.length; i++) {
-//                  if (model[i] < 0) {
-//                    timesFalse[i]++;
-//                  }
-//                }
-//              }
-//              double[] falseRate = new double[timesFalse.length];
-//              for (int i = 0; i < falseRate.length; i++) {
-//                falseRate[i] = timesFalse[i] / (double) models.size();
-//              }
-//              boolean testBool = true;
-//              for (double d : falseRate) {
-//                if (d == 1.0) {
-//                  if (displayActivated) {
-//                    System.out.println("Test successful, continue generating models");
-//                    System.out.println("The test took " + (System.currentTimeMillis() - startTest) + "ms");
-//                  }
-//                  testBool = false;
-//                  break;
-//                }
-//              }
-//              if (testBool) {
-//                if (displayActivated) {
-//                  System.out.println("Test failed, break model generation");
-//                  System.out.println("The test took " + (System.currentTimeMillis() - startTest) + "ms");
-//                }
-//                break;
-//              }
-            }
-            if ((System.currentTimeMillis() - startLoop) >= 50) {
-              if (displayActivated) {
-                System.out.println("MODEL CALCULATION TIMEOUT");
-              }
-              modelInterrupt = true;
-            }
-            if (displayActivated) {
-              System.out.println("It took " + (System.currentTimeMillis() - start) + "ms to calculate the models");
-              System.out.println("models.size = " + models.size());
-            }
-            // If a model could be found
-            if (!models.isEmpty()) {
-              boolean notPerfect = true;
-              // Iterate through all models and sum up how often a cell isn't assigned a mine
-              int[] timesFalse = new int[models.get(0).length];
-              for (int[] model : models) {
-                for (int i = 0; i < timesFalse.length; i++) {
-                  if (model[i] < 0) {
-                    timesFalse[i]++;
-                  }
-                }
-              }
-              // Calculate the rate of a cell being false using these values
-              double[] falseRate = new double[timesFalse.length];
-              for (int i = 0; i < falseRate.length; i++) {
-                falseRate[i] = timesFalse[i] / (double) models.size();
-              }
-              // And use the cell with the best rate
-              double bestRate = 0.01;
-              for (int i = 0; i < falseRate.length; i++) {
-                if (falseRate[i] == bestRate) {
-                  bestCells.add(cells.getCell(Math.abs(models.get(0)[i])));
-                  if (displayActivated) {
-                    System.out.println("Equal best cell found: " + Math.abs(models.get(0)[i]) + (" (")
-                        + cells.getCell(Math.abs(models.get(0)[i])).getX() + ", "
-                        + cells.getCell(Math.abs(models.get(0)[i])).getY() + (") ") + " with a falseRate of "
-                        + falseRate[i]);
-                  }
-                } else if (falseRate[i] > bestRate) {
-                  bestRate = falseRate[i];
-                  bestCells.clear();
-                  bestCells.add(cells.getCell(Math.abs(models.get(0)[i])));
-                  if (displayActivated) {
-                    System.out.println("New best cell found: " + Math.abs(models.get(0)[i]) + (" (")
-                        + cells.getCell(Math.abs(models.get(0)[i])).getX() + ", "
-                        + cells.getCell(Math.abs(models.get(0)[i])).getY() + (") ") + " with a falseRate of "
-                        + falseRate[i]);
-                  }
-                  notPerfect = falseRate[i] != 1.0;
-                } else if (falseRate[i] == 0) {
-                  cells.getCell(Math.abs(models.get(0)[i])).markMine();
-                }
-              }
-              // if there are multiple best cells, choose one of them at random
-              if (bestCells.size() > 1) {
-                int randIndex = (int) (Math.random() * bestCells.size());
-                bestCell = bestCells.get(randIndex);
-                bestCells.remove(randIndex);
-              } else {
-                // otherwise simply choose the one best cell
-                bestCell = bestCells.get(0);
-                bestCells.clear();
-              }
-
-              // If no perfect cell was found
-              // OR we cannot be sure the "safe" cell we found is actually safe
-              // because our solver took too long and couldn't generate every model
-              if (notPerfect || modelInterrupt) {
-                bestCells.clear();
-                // for testing purposes, we (might) tolerate cells with a false rate of >90%
-                // (currently not the case, we only accept perfect cells)
-                if (bestRate < 1) {
-                  // Choose a random cell from all cells which haven't been marked as mines yet
-                  ArrayList<Cell> candidates = cells.getAllCoveredNotDefinitelyMines();
-                  if (displayActivated) {
-                    System.out.println("Random selection due to notPerfect = true:");
-                    System.out.println("Candidates: (" + candidates.size() + ")");
-                    for (Cell c : candidates) {
-                      System.out.print("(" + c.getX() + "," + c.getY() + ") ");
-                    }
-                    System.out.println();
-                  }
-                  Random ran = new Random();
-                  int randIndex = ran.nextInt(candidates.size());
-                  bestCell = candidates.get(randIndex);
-                }
-              }
-
+            if (bestCells.isEmpty()) {
+              System.out.println("There aren't any safe cells.");
             } else {
-              System.out.println("Problem is not satisfiable.");
+              System.out.println("Safe cells:");
+              for (Cell c : bestCells) {
+                System.out.print("(" + c.getX() + "," + c.getY() + ") ");
+              }
+              System.out.println();
             }
-          } catch (TimeoutException e) {
-            System.out.println("Timeout occured!");
-            e.printStackTrace();
           }
 
-          // get the coordinates of the chosen best cell
-          if (bestCell != null) {
-            x = bestCell.getX();
-            y = bestCell.getY();
+          if (bestCells.isEmpty()) {
+            // if no safe cells could be found, choose a random cell which hasn't been
+            // marked as a mine
+            ArrayList<Cell> candidates = cells.getAllCoveredNotDefinitelyMines();
+            if (displayActivated) {
+              System.out.println(candidates.size() + " Random Candidates:");
+              for (Cell c : candidates) {
+                System.out.print("(" + c.getX() + "," + c.getY() + ") ");
+              }
+              System.out.println();
+            }
+            Random ran = new Random();
+            int randIndex = ran.nextInt(candidates.size());
+            bestCell = candidates.get(randIndex);
+          } else if (bestCells.size() > 1) {
+            // if multiple safe cells have been found, choose one of them at random
+            int randIndex = (int) (Math.random() * bestCells.size());
+            bestCell = bestCells.get(randIndex);
+            bestCells.remove(randIndex);
           } else {
-            System.out.println("Error: No suitable best cell found!");
-            x = rand.nextInt(numOfCols);
-            y = rand.nextInt(numOfRows);
+            // otherwise simply choose the one best cell
+            bestCell = bestCells.get(0);
+            bestCells.clear();
           }
+
         } else {
-          // should we have skipped the selection process: choose one of the remaining
-          // bestCells
+          // in case we skipped the selection process:
+          // randomly choose one of the remaining bestCells
           if (displayActivated) {
-            System.out
-                .println("Selection process skipped, as there are still bestCells with falseRate = 1.0 remaining");
+            System.out.println("Selection process skipped, as there are still safe cells remaining");
           }
           Random ran = new Random();
           int randIndex = ran.nextInt(bestCells.size());
@@ -272,30 +125,30 @@ public class SatMSAgent extends MSAgent {
           if (displayActivated) {
             System.out.println("bestCells.size() remaining: " + bestCells.size());
           }
-          if (bestCell != null) {
-            x = bestCell.getX();
-            y = bestCell.getY();
-          } else {
-            System.out.println("Error: No suitable best cell found!");
-            x = rand.nextInt(numOfCols);
-            y = rand.nextInt(numOfRows);
-          }
+        }
+
+        // get the coordinates of the chosen best cell
+        if (bestCell != null) {
+          x = bestCell.getX();
+          y = bestCell.getY();
+        } else {
+          // this shouldn't happen
+          System.out.println("Error: No suitable best cell found!\nChoosing completely random cell.");
+          x = rand.nextInt(numOfCols);
+          y = rand.nextInt(numOfRows);
         }
       }
 
-      if (displayActivated)
+      if (displayActivated) {
         System.out.println("Uncovering (" + x + "," + y + ")");
+      }
       feedback = field.uncover(x, y);
       cells.uncoverCell(x, y, feedback);
-      // END OF STEP
+      // end of a step
       if (displayActivated) {
         System.out.println("This step took " + (System.currentTimeMillis() - start) + "ms");
       }
     } while (feedback >= 0 && !field.solved());
-
-    if (modelInterrupt) {
-      System.out.println("\nModel solving was interrupted in at least one step!");
-    }
 
     if (field.solved()) {
       if (displayActivated) {
@@ -306,7 +159,6 @@ public class SatMSAgent extends MSAgent {
       if (displayActivated) {
         System.out.println("\nBOOM! because of (" + x + "," + y + ")");
       }
-//      System.out.println("BOOM! because of (" + x + "," + y + ")");
       return false;
     }
   }
@@ -315,107 +167,68 @@ public class SatMSAgent extends MSAgent {
     ArrayList<Cell> bestCells = new ArrayList<Cell>();
 
     for (Cell c : cells.getAllRelevantCells()) {
-      int index = c.getIndex();
-      int[][] clausesResolution = new int[clauses.length + 1][];
-      for (int i = 0; i < clauses.length; i++) {
-        clausesResolution[i] = clauses[i];
-      }
-      clausesResolution[clauses.length] = new int[] { index };
-      // Set up the SATsolver
-      ISolver solver = new ModelIterator(SolverFactory.newDefault());
-      final int MAXVAR = cells.size(); // (max) number of variables
-      final int NBCLAUSES = clausesResolution.length; // (max) number of clauses
-      solver.newVar(MAXVAR);
-      solver.setExpectedNumberOfClauses(NBCLAUSES);
-
-      // iterate through the clauses and add them to the solver
-      for (int i = 0; i < NBCLAUSES; i++) {
-        int[] clause = clausesResolution[i];
-        try {
-          solver.addClause(new VecInt(clause));
-        } catch (ContradictionException e) {
-          // The exception occurs not only when adding a null clause or a clause which
-          // itself is a contradiction, but also when the clause contains only falsified
-          // literals after unit propagation.
-          // In that case, solver would not be satisfiable and therefore c is a bestCell.
-          bestCells.add(c);
+      for (int j = 0; j < 2; j++) {
+        int index = c.getIndex();
+        int[][] clausesResolution = new int[clauses.length + 1][];
+        for (int i = 0; i < clauses.length; i++) {
+          clausesResolution[i] = clauses[i];
         }
-      }
-      try {
-        // We use resolution inference:
-        // If the formula is not satisfiable, KB ⊨ ¬c and c is definitely not a mine
-        if (!solver.isSatisfiable()) {
-          bestCells.add(c);
+        if (j != 0) {
+          index *= -1;
         }
-      } catch (TimeoutException e) {
-        System.out.println("Timeout occured!");
-        e.printStackTrace();
-      }
-    }
-    return bestCells;
-  }
+        clausesResolution[clauses.length] = new int[] { index };
+        // Set up the SATsolver
+        ISolver solver = new ModelIterator(SolverFactory.newDefault());
+        final int MAXVAR = cells.size(); // (max) number of variables
+        final int NBCLAUSES = clausesResolution.length; // (max) number of clauses
+        solver.newVar(MAXVAR);
+        solver.setExpectedNumberOfClauses(NBCLAUSES);
 
-  private ArrayList<int[][]> cnfSeparator(int[][] clauses) {
-    ArrayList<int[]> clausesList = new ArrayList<>(Arrays.asList(clauses));
-    ArrayList<ArrayList<int[]>> separateClauses = new ArrayList<ArrayList<int[]>>();
-
-    Iterator<int[]> it = clausesList.iterator();
-    int i = 0;
-    // Iterate through all clauses
-    while (it.hasNext()) {
-      // Create a new list a new clause island
-      separateClauses.add(new ArrayList<int[]>());
-      // add the first (root) clause
-      separateClauses.get(i).add(it.next());
-      i++;
-      // and remove it from the list
-      it.remove();
-      // iterate through all remaining clauses in the original clauses list:
-      Iterator<int[]> innerIt = clausesList.iterator();
-      while (innerIt.hasNext()) {
-        int[] clause = innerIt.next();
-        // check every "island" list
-        for (ArrayList<int[]> island : separateClauses) {
-          // check if any clause of the island shares a literal with the current clause
-          for (int[] clauseIsland : island) {
-            boolean found = false;
-            HashSet<Integer> set = new HashSet<Integer>();
-            for (int el : clause) {
-              set.add(Math.abs(el));
-            }
-            for (int el : clauseIsland) {
-              if (set.contains(Math.abs(el))) {
-                // then add the clause to the island
-                island.add(clause);
-                // and remove it from the original clauses list
-                innerIt.remove();
-                found = true;
-                break;
-              }
-            }
-            if (found) {
-              break;
+        // iterate through the clauses and add them to the solver
+        for (int i = 0; i < NBCLAUSES; i++) {
+          int[] clause = clausesResolution[i];
+          try {
+            solver.addClause(new VecInt(clause));
+          } catch (ContradictionException e) {
+            // The exception occurs not only when adding a null clause or a clause which
+            // itself is a contradiction, but also when the clause contains only falsified
+            // literals after unit propagation.
+            // We use this to our advantage, as that automatically means that both the
+            // clause {c} as well as {¬c} exist in the formula, which therefore is
+            // unsolvable.
+            if (j == 0) {
+              // KB ⊨ ¬c (c is definitely not a mine)
+              bestCells.add(c);
+            } else {
+              // KB ⊨ c (c is definitely a mine)
+              c.markMine();
             }
           }
         }
+        try {
+          // We use resolution inference:
+          if (!solver.isSatisfiable()) {
+            if (j == 0) {
+              // KB ⊨ ¬c (c is definitely not a mine)
+              bestCells.add(c);
+            } else {
+              // KB ⊨ c (c is definitely a mine)
+              c.markMine();
+            }
+          }
+        } catch (TimeoutException e) {
+          System.out.println("Timeout occured while testing for satisfiability!");
+          e.printStackTrace();
+        }
       }
     }
-
-    ArrayList<int[][]> separateClausesArray = new ArrayList<int[][]>();
-    for (ArrayList<int[]> clause : separateClauses) {
-      separateClausesArray.add(clause.toArray(new int[0][]));
-    }
-    return separateClausesArray;
+    return bestCells;
   }
 
   private int[][] cnfGenerator() {
     ArrayList<int[]> clausesList = new ArrayList<int[]>();
 
     for (Cell c : cells.getClueCells()) {
-      // ArrayList<Cell> coveredNeighbourCells =
-      // cells.getCoveredNeighbourCells(c.getX(),
-      // c.getY());
-      // int n = coveredNeighbourCells.size();
       ArrayList<Cell> coveredNeighbourCellsNotMines = cells.getCoveredNeighbourCellsNotMines(c.getX(), c.getY());
       int n = coveredNeighbourCellsNotMines.size();
 
