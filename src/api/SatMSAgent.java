@@ -13,8 +13,8 @@ import org.sat4j.tools.ModelIterator;
 /**
  * A SAT based implementation of the MSAgent.
  * 
- * Uses the resolution rule in propositional logic to decide whether a given
- * formula is satisfiable and uncovers (safe) cells accordingly.
+ * Uses a proof by contradiction in propositional logic to decide whether a
+ * given formula is satisfiable and uncovers (safe) cells accordingly.
  * 
  * The agent chooses a random cell should (via this algorithm) no safe cell be
  * found.
@@ -72,7 +72,7 @@ public class SatMSAgent extends MSAgent {
           /*
            * general idea: For every cell which neighbours an uncovered cell, add a clause
            * to the generated clauses which is used to proof whether the cell is either
-           * definitely a mine or definitely not (resolution).
+           * definitely a mine or definitely not (indirect proof).
            * 
            * Use the gathered information to mark or uncover the respective cells. Cells
            * for which neither can be proven are not modified. In case no safe decision
@@ -178,7 +178,7 @@ public class SatMSAgent extends MSAgent {
   }
 
   /**
-   * Calculates the best cells via a SAT solver and resolution interference.
+   * Calculates the best cells via a SAT solver and an indirect proof.
    * 
    * @param clauses the generated clauses from all clue cells
    * @return the or all best cells
@@ -189,26 +189,26 @@ public class SatMSAgent extends MSAgent {
     for (Cell c : cells.getAllRelevantCells()) {
       for (int j = 0; j < 2; j++) {
         int index = c.getIndex();
-        int[][] clausesResolution = new int[clauses.length + 1][];
+        int[][] clausesIndirectProof = new int[clauses.length + 1][];
         for (int i = 0; i < clauses.length; i++) {
-          clausesResolution[i] = clauses[i];
+          clausesIndirectProof[i] = clauses[i];
         }
         if (j != 0) {
           index *= -1;
         }
-        // Add the (crucial) clause for the resolution interference
-        clausesResolution[clauses.length] = new int[] { index };
+        // Add the (crucial) clause for the proof by contradiction
+        clausesIndirectProof[clauses.length] = new int[] { index };
 
         // Set up the SATsolver
         ISolver solver = new ModelIterator(SolverFactory.newDefault());
         final int MAXVAR = cells.size(); // (max) number of variables
-        final int NBCLAUSES = clausesResolution.length; // (max) number of clauses
+        final int NBCLAUSES = clausesIndirectProof.length; // (max) number of clauses
         solver.newVar(MAXVAR);
         solver.setExpectedNumberOfClauses(NBCLAUSES);
 
         // iterate through the clauses and add them to the solver
         for (int i = 0; i < NBCLAUSES; i++) {
-          int[] clause = clausesResolution[i];
+          int[] clause = clausesIndirectProof[i];
           try {
             solver.addClause(new VecInt(clause));
           } catch (ContradictionException e) {
@@ -231,7 +231,7 @@ public class SatMSAgent extends MSAgent {
           }
         }
         try {
-          // We use resolution inference:
+          // We perform a proof by contradiction
           if (!solver.isSatisfiable()) {
             if (j == 0) {
               // KB ⊨ ¬c (c is definitely not a mine)

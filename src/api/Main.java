@@ -51,7 +51,7 @@ public class Main {
     // Test a SPECIFIC field (CHANGE VALUES)
     int iterations = 100;
     int field = 21;
-    
+
     // Test ALL fields (starting with field[startAt]) (CHANGE VALUES)
     boolean checkAllFields = true;
     int startAt = 0;
@@ -87,8 +87,8 @@ public class Main {
           double avgDuration = ((double) duration / (double) success) / 1000;
           DecimalFormat dfr = new DecimalFormat("#.#");
           DecimalFormat dfa = new DecimalFormat("#.###");
-          System.out.print("\rIteration " + i + "/" + iterations + "\tCurrent success: " + dfr.format(rate)
-              + "%\tAverage duration: " + dfa.format(avgDuration) + "s     ");
+          System.out.print("\rIteration " + i + "/" + iterations + "\tCurrent success: " + dfr.format(rate) + "% ("
+              + dfr.format(expectedRate[field]) + "%)" + "\tØ duration: " + dfa.format(avgDuration) + "s (" + dfa.format(expectedAvgDuration[field]) + "s)   ");
         } else {
           System.out.print("\rAll iterations calculated.");
         }
@@ -128,7 +128,7 @@ public class Main {
     }
 
     // Display the calculated values of success rate and average duration on success
-    
+
     System.out.println("\n\nStatistics for " + iterations + " iterations of field " + fields[field] + ":");
 
     double rate = 100 * (double) success / (double) iterations;
