@@ -48,13 +48,12 @@ public class Main {
    * @param args
    */
   public static void main(String[] args) {
-    // Test a SPECIFIC field (CHANGE VALUES)
-    int iterations = 100;
-    int field = 21;
-
     // Test ALL fields (starting with field[startAt]) (CHANGE VALUES)
     boolean checkAllFields = true;
-    int startAt = 0;
+    int startAt = 17;
+    // Test a SPECIFIC field (checkAllFields = false) (CHANGE VALUES)
+    int iterations = 1000;
+    int field = 16;
 
     if (checkAllFields) {
       for (int i = startAt; i < fields.length; i++) {
@@ -88,7 +87,8 @@ public class Main {
           DecimalFormat dfr = new DecimalFormat("#.#");
           DecimalFormat dfa = new DecimalFormat("#.###");
           System.out.print("\rIteration " + i + "/" + iterations + "\tCurrent success: " + dfr.format(rate) + "% ("
-              + dfr.format(expectedRate[field]) + "%)" + "\tØ duration: " + dfa.format(avgDuration) + "s (" + dfa.format(expectedAvgDuration[field]) + "s)   ");
+              + dfr.format(expectedRate[field]) + "%)" + "\tØ duration: " + dfa.format(avgDuration) + "s ("
+              + dfa.format(expectedAvgDuration[field]) + "s)   ");
         } else {
           System.out.print("\rAll iterations calculated.");
         }
