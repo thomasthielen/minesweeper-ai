@@ -1,5 +1,10 @@
 package api;
 
+/**
+ * Holds values of a cell of the field.
+ * 
+ * @author tthielen
+ */
 public class Cell {
   private int x;
   private int y;
@@ -8,6 +13,13 @@ public class Cell {
   private boolean mine;
   private int clue;
 
+  /**
+   * Constructor for the cell.
+   * 
+   * @param x     the x-coordinate of the cell
+   * @param y     the y-coordinate of the cell
+   * @param index the index of the cell in the ArrayList
+   */
   public Cell(int x, int y, int index) {
     this.x = x;
     this.y = y;
@@ -16,11 +28,19 @@ public class Cell {
     this.mine = false;
   }
 
+  /**
+   * Uncovers the cell and thereby saves its clue value.
+   * 
+   * @param clue how many neighbours of the cell are mines
+   */
   public void uncover(int clue) {
     this.uncovered = true;
     this.clue = clue;
   }
-  
+
+  /**
+   * Permanently marks the cell as a mine.
+   */
   public void markMine() {
     this.mine = true;
   }
@@ -40,7 +60,7 @@ public class Cell {
   public boolean isUncovered() {
     return this.uncovered;
   }
-  
+
   public boolean isMine() {
     return this.mine;
   }
